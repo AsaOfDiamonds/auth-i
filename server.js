@@ -2,6 +2,8 @@ const express = require('express');
 const configureMiddleware = require('./config/middleware');
 const bcrypt = require('bcryptjs'); //yarn add bcryptjs
 const db = require('./dbConfig');
+const session = require('express-session');
+const KnexSessionStore = require('connect-session-knex')(session);
 
 
 const server = express();
@@ -10,6 +12,29 @@ const server = express();
 configureMiddleware(server);
 
 // routes and end points
+
+const sessionConfig = {
+    name: 'TrevorFehrman',
+    secret: 'thewolfpackisbackjackleavetheblackwidowalone'
+    cookie: {
+        maxAge: 1000 * 60 * 5, // in milliseconds
+        secure: false, // true during production, only send the cookie over https
+    },
+    httpOnly: true, // js can't touch this
+    resave: false, 
+    saveUninitialized: false,
+    store: new KnexSessionsStore({
+        tablename: 'sessions',
+        sidfilename: 'sid',
+        knex: db,
+        createtable: true,
+        clearInterval: 1000 * 60 * 10,
+    }),
+};
+
+
+
+
 server.post('/api/login', (req, res) => {
     // grab username and password from the body
     const creds = req.body;
@@ -27,6 +52,22 @@ server.post('/api/login', (req, res) => {
             }
         })
         .catch(err => res.json(err));
+});
+
+function protected(req, res, next) {
+    // if the user is logged in next
+    if (req.session && req.session.user) {
+        next();
+    } else {
+        res.status(401).json({ message: 'You shall not pass!!! not authenticated'});
+    }
+}
+
+// protect this endpoint so that only logged in users can see it
+server.get('/users', protected, async (req, res) => {
+    const users = await db('users');
+
+    res.status(200).json(users);
 });
 
 
