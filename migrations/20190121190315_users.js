@@ -4,6 +4,10 @@ exports.up = function(knex, Promise) {
         users.increments();
 
         users
+        .string('name', 255)
+        .notNullable();
+
+        users
             .string('username', 128)
             .notNullable()
             .unique();

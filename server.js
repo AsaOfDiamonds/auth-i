@@ -14,8 +14,8 @@ configureMiddleware(server);
 // routes and end points
 
 const sessionConfig = {
-    name: 'TrevorFehrman',
-    secret: 'thewolfpackisbackjackleavetheblackwidowalone'
+    name: 'TrevorFehrman', // default is sid
+    secret: 'thewolfpackisbackjackleavetheblackwidowalone',
     cookie: {
         maxAge: 1000 * 60 * 5, // in milliseconds
         secure: false, // true during production, only send the cookie over https
@@ -23,9 +23,9 @@ const sessionConfig = {
     httpOnly: true, // js can't touch this
     resave: false, 
     saveUninitialized: false,
-    store: new KnexSessionsStore({
+    store: new KnexSessionStore({
         tablename: 'sessions',
-        sidfilename: 'sid',
+        sidfieldname: 'sid',
         knex: db,
         createtable: true,
         clearInterval: 1000 * 60 * 10,
@@ -45,7 +45,8 @@ server.post('/api/login', (req, res) => {
         .then(user => {
             if (user && bcrypt.compareSync(creds.password, user.password)) {
                 // passwords match and user exists by that username
-                res.status(200).json({ message: 'Welcome!' });
+                req.session.user = user;
+                res.status(200).json({ message: 'Welcome we have cookies!', cookie: req.session.user });
             } else {
                 // either username is invalid or password is wrong
                 res.status(401).json({ message: 'you shall not pass!!' });
@@ -85,7 +86,9 @@ server.post('/api/register', (req, res) => {
         .then(ids => {
             res.status(201).json(ids);
         })
-        .catch(err => json(err));
+    .catch(err => {
+        console.log(err)
+        res.json(err)});
 });
 
 
@@ -101,6 +104,20 @@ server.get('/api/users', (req, res) => {
             res.json(users);
         })
         .catch(err => res.send(err));
+});
+
+server.get('/api/logout', (req, res) => {
+    if (req.session) {
+        req.session.destroyer(err => {
+        if (err) {
+            res.status(500).send('Welcome to the Hotel California, you can never leave');
+        } else {
+            res.status(200).send('bye bye');            
+        }   
+    });
+    } else {
+        res.json({ message: 'logged out already' });
+    }
 });
 
 
